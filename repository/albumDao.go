@@ -38,7 +38,44 @@ func main() {
 	}
 	fmt.Println("Connected in database!")
 
-	fmt.Println(getAbumById(99))
+	fmt.Println(getAllAbums())
+}
+
+func getAllAbums() ([]model.Album, error) {
+	var albums []model.Album
+
+	conDb := getConnection()
+
+	rows, err := conDb.Query("SELECT * FROM album")
+
+	if err != nil {
+		log.Fatal("Error! please, try again!")
+		return nil, fmt.Errorf("albums: %v", err)
+	}
+
+	defer rows.Close()
+	defer conDb.Close()
+
+	for rows.Next() {
+		var alb model.Album
+
+		err := rows.Scan(&alb.ID,
+			&alb.Title,
+			&alb.Artist,
+			&alb.Price)
+
+		if err != nil {
+			log.Fatal("Error, in Find!")
+			return nil, fmt.Errorf("albuns: %v", err)
+		}
+		albums = append(albums, alb)
+
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("albumsByArtists: %v", err)
+	}
+	return albums, nil
+
 }
 
 func getAbumById(id int64) (model.Album, error) {
@@ -47,7 +84,13 @@ func getAbumById(id int64) (model.Album, error) {
 
 	row := conDb.QueryRow("SELECT *FROM album WHERE id = $1", id)
 
-	err := row.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price)
+	err := row.Scan(
+		&alb.ID,
+		&alb.Title,
+		&alb.Artist,
+		&alb.Price,
+	)
+	defer conDb.Close()
 
 	if err == sql.ErrNoRows {
 		return alb, fmt.Errorf("albumsById %d: no such album", id)
