@@ -1,0 +1,11 @@
+{
+    "go.toolsEnvVars": {
+        "GOTOOLCHAIN": "go1.22.2+auto"
+    },
+    "go.diagnostic.vulncheck": "Imports", // enable the imports-based analysis by default.
+    "gopls": {
+      "ui.codelenses": {
+        "run_govulncheck": true  // "Run govulncheck" code lens on go.mod file.
+      }
+    }
+}

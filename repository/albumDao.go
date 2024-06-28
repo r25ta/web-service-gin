@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 
 	constant "example.com/web-service-gin/constant"
+	model "example.com/web-service-gin/model"
 )
 
 func getConnection() (con *sql.DB) {
@@ -37,4 +38,25 @@ func main() {
 	}
 	fmt.Println("Connected in database!")
 
+	fmt.Println(getAbumById(99))
+}
+
+func getAbumById(id int64) (model.Album, error) {
+	var alb model.Album
+	conDb := getConnection()
+
+	row := conDb.QueryRow("SELECT *FROM album WHERE id = $1", id)
+
+	err := row.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price)
+
+	if err == sql.ErrNoRows {
+		return alb, fmt.Errorf("albumsById %d: no such album", id)
+
+	} else if err != nil {
+		return alb, fmt.Errorf("albumsById %d: %v", id, err)
+
+	} else {
+		return alb, nil
+
+	}
 }
