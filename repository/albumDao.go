@@ -1,4 +1,4 @@
-package main
+package repository
 
 import (
 	"database/sql"
@@ -7,46 +7,18 @@ import (
 
 	_ "github.com/lib/pq"
 
-	constant "example.com/web-service-gin/constant"
-	model "example.com/web-service-gin/model"
+	"r25ta.com/web-service-gin/internal/utility"
+	"r25ta.com/web-service-gin/model"
 )
 
-func getConnection() (con *sql.DB) {
-
-	dbCredencials := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=disable", constant.USER, constant.PWD, constant.SERVER, constant.PORT, constant.DATABASE)
-
-	conDb, conErr := sql.Open("postgres", dbCredencials)
-
-	if conErr != nil {
-		log.Fatal("Error connecting to the database", conErr)
-		return nil
+func GetAllAlbums() ([]model.Album, error) {
+	connStr := utility.ConnectionString()
+	connDB, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal("Não foi possivel estabelecer conexão com BD %s", err)
 	}
 
-	//	defer conDb.Close()
-	return conDb
-}
-
-func main() {
-
-	conDb := getConnection()
-
-	pingErr := conDb.Ping()
-
-	if pingErr != nil {
-		log.Fatal("Error ")
-
-	}
-	fmt.Println("Connected in database!")
-
-	fmt.Println(getAllAbums())
-}
-
-func getAllAbums() ([]model.Album, error) {
-	var albums []model.Album
-
-	conDb := getConnection()
-
-	rows, err := conDb.Query("SELECT * FROM album")
+	rows, err := connDB.Query("SELECT * FROM album")
 
 	if err != nil {
 		log.Fatal("Error! please, try again!")
@@ -54,7 +26,9 @@ func getAllAbums() ([]model.Album, error) {
 	}
 
 	defer rows.Close()
-	defer conDb.Close()
+	defer connDB.Close()
+
+	var albums []model.Album
 
 	for rows.Next() {
 		var alb model.Album
@@ -77,20 +51,65 @@ func getAllAbums() ([]model.Album, error) {
 	return albums, nil
 
 }
+func GetAlbumByArtist(artist string) ([]model.Album, error) {
+	connStr := utility.ConnectionString()
+	//connStr := "postgres://postgres:admin@localhost:5432/recordings?sslmode=disable"
+	connDB, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal("Não foi possivel estabelecer conexão com BD %s", err)
+	}
 
-func getAbumById(id int64) (model.Album, error) {
+	rows, err := connDB.Query("SELECT * FROM album WHERE artist LIKE $1", "%"+artist+"%")
+
+	if err != nil {
+		log.Fatal("Error! please, try again!")
+		return nil, fmt.Errorf("albums: %v", err)
+	}
+
+	defer rows.Close()
+	defer connDB.Close()
+
+	var albums []model.Album
+
+	for rows.Next() {
+		var alb model.Album
+		err = rows.Scan(
+			&alb.ID,
+			&alb.Title,
+			&alb.Artist,
+			&alb.Price,
+		)
+		if err != nil {
+			log.Fatal("Error, in Find!")
+			return nil, fmt.Errorf("albuns: %v", err)
+		}
+		albums = append(albums, alb)
+
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("albumsByArtists: %v", err)
+	}
+	return albums, nil
+
+}
+func GetAlbumById(id int64) (model.Album, error) {
+
+	connStr := utility.ConnectionString()
+	connDB, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal("Não foi possivel estabelecer conexão com BD %s", err)
+	}
+
+	row := connDB.QueryRow("SELECT *FROM album WHERE id = $1", id)
 	var alb model.Album
-	conDb := getConnection()
 
-	row := conDb.QueryRow("SELECT *FROM album WHERE id = $1", id)
-
-	err := row.Scan(
+	err = row.Scan(
 		&alb.ID,
 		&alb.Title,
 		&alb.Artist,
 		&alb.Price,
 	)
-	defer conDb.Close()
+	defer connDB.Close()
 
 	if err == sql.ErrNoRows {
 		return alb, fmt.Errorf("albumsById %d: no such album", id)
